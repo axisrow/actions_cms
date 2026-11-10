@@ -1,5 +1,7 @@
 """scripts/commit.sh against a local bare repository: the push race that three site workflows can run into."""
+import datetime as dt
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -85,10 +87,29 @@ def test_changes_are_committed_and_pushed(repo):
     assert result.returncode == 0, result.stderr
     assert result.github_output == "changed=true\n"
     subject = repo.remote_log()[0]
-    assert subject.startswith("publish: 20") and "{" not in subject  # both tokens expanded
+    assert re.fullmatch(r"publish: \d{4}-\d\d-\d\d at \d{4}-\d\d-\d\d \d\d:\d\d", subject), subject  # both tokens expanded, nothing else added
     assert repo.remote_file("docs/page.md") == "two\n" and repo.remote_file("content/index.json") == "[]\n"
     assert "unrelated.txt" not in repo.git(repo.remote, "ls-tree", "-r", "--name-only", "main")
     assert repo.git(repo.remote, "log", "-1", "--format=%an", "main").strip() == "Tester"
+
+
+def test_the_message_is_used_exactly_as_given(repo):
+    (repo.work / "docs" / "page.md").write_text("two\n")
+    assert repo.commit("docs", "publish: {date}").returncode == 0
+    assert repo.remote_log()[0] == f"publish: {dt.datetime.now(dt.timezone.utc):%Y-%m-%d}"  # no stray characters
+    (repo.work / "docs" / "page.md").write_text("three\n")
+    assert repo.commit("docs", "plain message, no tokens {x}").returncode == 0
+    assert repo.remote_log()[0] == "plain message, no tokens {x}"
+
+
+def test_the_default_message_when_none_is_given(repo):
+    (repo.work / "docs" / "page.md").write_text("two\n")
+    result = subprocess.run(
+        ["bash", str(SCRIPT)], cwd=repo.work, capture_output=True, text=True,
+        env={**repo.env, "CMS_COMMIT_PATHS": "docs", "CMS_PUSH_BACKOFF": "0"},  # CMS_COMMIT_MESSAGE unset
+    )
+    assert result.returncode == 0, result.stderr
+    assert re.fullmatch(r"cms: \d{4}-\d\d-\d\d \d\d:\d\d", repo.remote_log()[0]), repo.remote_log()[0]
 
 
 def test_deletions_are_committed(repo):

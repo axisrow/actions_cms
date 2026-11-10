@@ -14,7 +14,10 @@ set -euo pipefail
 
 paths_line="${CMS_COMMIT_PATHS:-}"
 read -ra paths <<< "${paths_line//$'\n'/ }"
-message="${CMS_COMMIT_MESSAGE:-cms: {datetime}}"
+# The default lives in a variable: written inline, its closing brace would end the expansion early
+# and a stray `}` would be appended to every message.
+default_message='cms: {datetime}'
+message="${CMS_COMMIT_MESSAGE:-$default_message}"
 attempts="${CMS_PUSH_ATTEMPTS:-5}"
 backoff="${CMS_PUSH_BACKOFF:-2}"
 remote="${CMS_REMOTE:-origin}"

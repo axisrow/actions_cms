@@ -86,6 +86,8 @@ jobs:
           CHANGED: ${{ steps.publish.outputs.changed }}
           CHANGED_AGAIN: ${{ steps.again.outputs.changed }}
         run: |
+          echo "Commits in the remote:"
+          git -C "$RUNNER_TEMP/remote.git" log --format='%h %an | %s' main
           set -x
           test "$CHANGED" = "true"
           test "$CHANGED_AGAIN" = "false"
