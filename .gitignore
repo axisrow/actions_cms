@@ -1,0 +1,9 @@
+# Patterns are anchored on purpose: hatchling applies this file to every path,
+# including the site template under src/actions_cms/template/.
+/.venv/
+/dist/
+/build/
+/.pytest_cache/
+__pycache__/
+*.egg-info/
+.DS_Store

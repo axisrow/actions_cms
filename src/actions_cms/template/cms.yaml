@@ -1,0 +1,17 @@
+# actions_cms settings. Only `rubrics` is required; the commented values are the defaults.
+generator: mkdocs-material
+
+# rubric (front-matter `rubric:`) -> category shown on the site
+rubrics:
+  news: "__CAT_NEWS__"
+  guide: "__CAT_GUIDE__"
+
+# paths:
+#   drafts: drafts                  # drafts/<batch>/NN-slug.md
+#   posts: docs/blog/posts
+#   index: content/index.json
+# required: [summary]               # on top of title, date, rubric, status
+# summary_max: 280
+# collect:
+#   feeds: {config: config/sources.yaml, inbox: inbox/news, hours: 48}
+#   sites: {config: config/sites.yaml, inbox: inbox/sites}

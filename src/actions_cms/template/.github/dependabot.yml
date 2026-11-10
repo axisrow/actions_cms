@@ -1,0 +1,7 @@
+# The workflows pin third-party actions by major version; this proposes the bump when one is released.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

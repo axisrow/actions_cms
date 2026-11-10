@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: pytest
+
+  # The action exactly as a site uses it, against a site made from the template.
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create a site with the action
+        uses: ./
+        with:
+          run: init demo --name Demo --repo example/demo --lang en
+
+      - name: Give the site its own repository and a remote to push to
+        run: |
+          git init --quiet --bare --initial-branch=main "$RUNNER_TEMP/remote.git"
+          cd demo
+          git init --quiet --initial-branch=main
+          git remote add origin "$RUNNER_TEMP/remote.git"
+          git add -A
+          git -c user.name=ci -c user.email=ci@example.com commit --quiet -m "site"
+          git push --quiet origin main
+
+      - name: Check the pull request (check.yml)
+        uses: ./
+        with:
+          working-directory: demo
+          requirements: requirements.txt
+          run: validate --build
+
+      - name: Publish the drafts (publish.yml)
+        id: publish
+        uses: ./
+        with:
+          working-directory: demo
+          run: promote --all
+          commit: drafts docs content
+          commit-message: "publish: {date}"
+
+      - name: Build the site (pages.yml)
+        uses: ./
+        with:
+          working-directory: demo
+          requirements: requirements.txt
+          run: build
+
+      - name: Publish again — nothing to commit
+        id: again
+        uses: ./
+        with:
+          working-directory: demo
+          run: promote --all
+          commit: drafts docs content
+
+      - name: Verify
+        env:
+          CHANGED: ${{ steps.publish.outputs.changed }}
+          CHANGED_AGAIN: ${{ steps.again.outputs.changed }}
+        run: |
+          set -x
+          test "$CHANGED" = "true"
+          test "$CHANGED_AGAIN" = "false"
+          git -C "$RUNNER_TEMP/remote.git" log --format=%s main | grep -x "publish: $(date -u +%F)"
+          test "$(git -C "$RUNNER_TEMP/remote.git" log --format=%an -1 main)" = "github-actions[bot]"
+          test -z "$(git -C demo status --porcelain)"
+          ls demo/site/blog/*/*/*/hello-world/index.html
+          ls demo/docs/blog/posts/*-hello-world.md
