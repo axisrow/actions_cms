@@ -1,0 +1,93 @@
+name: actions_cms
+description: Run the actions_cms CLI on a site repository and optionally commit and push the result.
+
+inputs:
+  run:
+    description: >-
+      cms commands to run, one per line, without the leading `cms` (for example `promote --all`).
+      Arguments are split on whitespace; quoting is not supported. Empty: only install the CLI.
+    required: false
+    default: ""
+  commit:
+    description: Whitespace-separated paths to commit and push after the commands ran. Empty — commit nothing.
+    required: false
+    default: ""
+  commit-message:
+    description: Commit message. `{date}` and `{datetime}` expand to the current UTC time.
+    required: false
+    default: "cms: {datetime}"
+  requirements:
+    description: The site's requirements file (its static-site generator), installed next to the CLI and used as the pip cache key.
+    required: false
+    default: ""
+  python-version:
+    description: Python version to run on.
+    required: false
+    default: "3.12"
+  working-directory:
+    description: Site root, relative to the workspace.
+    required: false
+    default: "."
+
+outputs:
+  changed:
+    description: "'true' if a commit was pushed, 'false' if there was nothing to commit. Empty when `commit` is empty."
+    value: ${{ steps.commit.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    # Recorded before any nested action runs: a nested `uses:` may leave GITHUB_ACTION_PATH pointing at itself.
+    - name: Locate the action
+      id: self
+      shell: bash
+      run: echo "path=$GITHUB_ACTION_PATH" >> "$GITHUB_OUTPUT"
+
+    # setup-python fails on `cache: pip` when no dependency file matches, so cache only when the site has one
+    - name: Set up Python (cached)
+      if: inputs.requirements != ''
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+        cache-dependency-path: ${{ inputs.working-directory }}/${{ inputs.requirements }}
+    - name: Set up Python
+      if: inputs.requirements == ''
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    # The action directory is this repository at the ref from `uses:`, so the CLI version always matches it.
+    - name: Install actions_cms
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CMS_ACTION_PATH: ${{ steps.self.outputs.path }}
+        CMS_REQUIREMENTS: ${{ inputs.requirements }}
+      run: python -m pip install --quiet --disable-pip-version-check "$CMS_ACTION_PATH" ${CMS_REQUIREMENTS:+-r "$CMS_REQUIREMENTS"}
+
+    - name: Run cms
+      if: inputs.run != ''
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CMS_RUN: ${{ inputs.run }}
+      run: |
+        while IFS= read -r line; do
+          read -ra args <<< "$line"
+          if [ "${#args[@]}" -eq 0 ]; then continue; fi
+          echo "::group::cms ${args[*]}"
+          cms "${args[@]}"
+          echo "::endgroup::"
+        done <<< "$CMS_RUN"
+
+    - name: Commit and push
+      id: commit
+      if: inputs.commit != ''
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CMS_ACTION_PATH: ${{ steps.self.outputs.path }}
+        CMS_COMMIT_PATHS: ${{ inputs.commit }}
+        CMS_COMMIT_MESSAGE: ${{ inputs.commit-message }}
+      run: bash "$CMS_ACTION_PATH/scripts/commit.sh"

@@ -1,0 +1,24 @@
+name: Check
+
+# Fails the pull request if merging it would break the publication:
+# a bad draft, or a site that no longer builds with the drafts published.
+on:
+  pull_request:
+    paths: [drafts/**, docs/**, cms.yaml, mkdocs.yml, requirements.txt, .github/workflows/check.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: __ENGINE_REPO__@__ENGINE_REF__
+        with:
+          requirements: requirements.txt
+          run: validate --build

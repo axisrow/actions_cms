@@ -1,0 +1,32 @@
+name: Publish
+
+# A merged pull request with drafts is the approval: every draft that reaches main goes to the site.
+on:
+  push:
+    branches: [main]
+    paths: [drafts/**]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: __ENGINE_REPO__@__ENGINE_REF__
+        with:
+          run: promote --all
+          commit: drafts docs content
+          commit-message: "publish: {date}"
+  # commits made with GITHUB_TOKEN don't trigger pages.yml, so deploy explicitly
+  pages:
+    needs: promote
+    uses: ./.github/workflows/pages.yml

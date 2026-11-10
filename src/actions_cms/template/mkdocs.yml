@@ -1,0 +1,45 @@
+site_name: "__SITE_NAME__"
+site_description: "__SITE_DESCRIPTION__"
+site_url: "__SITE_URL__"
+repo_url: "__REPO_URL__"
+docs_dir: docs
+theme:
+  name: material
+  language: __LANG__
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: { icon: material/brightness-7, name: "__TO_DARK__" }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: { icon: material/brightness-4, name: "__TO_LIGHT__" }
+  features:
+    - content.code.copy
+    - navigation.indexes
+plugins:
+  - search:
+      lang: __LANG__
+  # Allowed categories come from `rubrics` in cms.yaml; add `categories_allowed` here only to narrow them.
+  - blog:
+      blog_dir: blog
+      post_date_format: long
+      post_url_format: "{date}/{slug}"
+      post_excerpt: required
+  - tags
+  - rss:
+      use_git: false
+      match_path: blog/posts/.*
+      date_from_meta:
+        as_creation: date
+      categories: [categories, tags]
+      abstract_chars_count: 280
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+nav:
+  - "__NAV_HOME__": index.md
+  - "__NAV_BLOG__":
+      - blog/index.md

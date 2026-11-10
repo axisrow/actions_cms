@@ -1,0 +1,9 @@
+# RSS/Atom feeds to watch. `cms collect feeds` writes new items to inbox/news/<date>.json.
+# filter: true — keep only items that mention one of `keywords`.
+# exclude      — drop items that mention one of these words, in every feed.
+keywords: []
+exclude: []
+feeds: []
+#  - name: Example blog
+#    url: https://example.com/feed.xml
+#    filter: true

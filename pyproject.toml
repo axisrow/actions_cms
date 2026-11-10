@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "actions-cms"
+dynamic = ["version"]
+description = "A GitHub-Actions-driven CMS for static sites on GitHub Pages: drafts in a pull request, merge to publish."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+# Ranges, not pins: the action installs the engine together with the site's own requirements.txt.
+dependencies = [
+    "PyYAML>=6,<7",
+    "feedparser>=6.0.11,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "mkdocs-material==9.8.1",
+    "mkdocs-rss-plugin==1.20.0",
+]
+
+[project.scripts]
+cms = "actions_cms.cli:main"
+
+[project.urls]
+Repository = "https://github.com/axisrow/actions_cms"
+
+# The version is read from a file, not from git: the action installs from a tarball without .git.
+[tool.hatch.version]
+path = "src/actions_cms/__init__.py"
+
+[tool.hatch.build]
+# The site template is data with dot-files; never let an ignore pattern drop part of it.
+artifacts = ["src/actions_cms/template/**"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/actions_cms"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

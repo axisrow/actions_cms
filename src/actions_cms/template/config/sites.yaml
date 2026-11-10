@@ -1,0 +1,10 @@
+# Sites whose article sections to watch. `cms collect sites` writes new links to inbox/sites/<date>.json.
+# articles — the section with the articles;
+# rss      — the site's feed, tried first when present;
+# keywords — keep only titles containing one of these words.
+# If the section builds its list with JavaScript, the links are taken from the sitemap.
+[]
+#- name: Example
+#  articles: https://example.com/blog/
+#  rss: https://example.com/feed/
+#  keywords: [release, guide]
