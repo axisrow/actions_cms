@@ -1,27 +1,33 @@
 name: Release
 
-# Sites pin the action by major version (`@v0`). Pushing a full version tag moves the major tag to it.
+# Sites pin the action by major version (`@v0`); every release moves that tag.
+#
+#  * Push a tag vX.Y.Z whose number equals __version__ — only the major tag is moved.
+#  * Or run this workflow by hand on main: it creates the tag v<__version__> on that commit,
+#    moves the major tag and publishes a GitHub Release.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  major-tag:
+  release:
+    # a manual run may only release main
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: The tag must match the package version
-        run: |
-          version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/actions_cms/__init__.py)"
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match the package version $version"
-            exit 1
-          fi
-      - name: Move the major tag
-        run: |
-          major="${GITHUB_REF_NAME%%.*}"
-          git tag --force "$major"
-          git push --force origin "refs/tags/$major"
+      - name: Tag
+        id: tag
+        env:
+          MODE: ${{ github.event_name == 'push' && 'pushed' || 'dispatch' }}
+        run: bash scripts/release.sh "$MODE"
+      - name: Publish the GitHub Release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: gh release create "$TAG" --verify-tag --generate-notes --title "actions_cms ${TAG#v}"
